@@ -28,6 +28,8 @@
 - [FIXED] `bulkCreate` don't map fields to attributes properly [#4476](https://github.com/sequelize/sequelize/issues/4476)[#3908](https://github.com/sequelize/sequelize/issues/3908)[#4103](https://github.com/sequelize/sequelize/issues/4103)[#3764](https://github.com/sequelize/sequelize/issues/3764)[#3789](https://github.com/sequelize/sequelize/issues/3789)[#4600](https://github.com/sequelize/sequelize/issues/4600)
 - [FIXED] `sync` don't handle global `options.logging` properly [#5788](https://github.com/sequelize/sequelize/issues/5788)
 - [FIXED] `attribute:[]` throw errors with `include` or `through` [#5078](https://github.com/sequelize/sequelize/issues/5078) [#4222](https://github.com/sequelize/sequelize/issues/4222) [#5958](https://github.com/sequelize/sequelize/issues/5958) [#5590](https://github.com/sequelize/sequelize/issues/5590) [#6139](https://github.com/sequelize/sequelize/issues/6139) [#4866](https://github.com/sequelize/sequelize/issues/4866) [#6242](https://github.com/sequelize/sequelize/issues/6242)
+- [CHANGED] `BelongsToMany.removeAssociation` now defaults to `individualHooks:true` [#4780](https://github.com/sequelize/sequelize/issues/4780)
+- [CHANGED] `Hooks.hasHooks` now accepts an array of hooks. Additional `anyHooks` argument will allow searching for any or all hooks in the array.
 
 ## BC breaks:
 - Range type bounds now default to [postgres default](https://www.postgresql.org/docs/9.5/static/rangetypes.html#RANGETYPES-CONSTRUCT) `[)` (inclusive, exclusive), previously was `()` (exclusive, exclusive)
@@ -36,6 +38,8 @@
 - Dropped support for `classMethods` and `instanceMethods`. As Models are now ES6 classes `classMethods` can be directly assigned and `instanceMethods` should be added to `Model.prototype`
 - `Sequelize.Validator` is now a cloned version of `validator`, It will not pollute global library methods.
 - `ignore` for create was renamed to `ignoreDuplicates`
+- With `BelongsToMany` if `through` model have any destroy hooks, they will run as well. Internally we now defaults to `individualHooks:true`. You can override this by passing `individualHooks:false` to `removeAssociation()` options.
+- `hasHooks` is no longer a proxy to `hasHook`. Now it accepts array of hooks to look for. It also allow searching with any or all flag.
 
 # 4.0.0-0
 - [FIXED] Pass ResourceLock instead of raw connection in MSSQL disconnect handling
