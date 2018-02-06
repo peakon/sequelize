@@ -68,6 +68,13 @@ suite(Support.getTestDialectTeaser('SQL'), () => {
       default: "WHERE [name] = 'a project' AND ([id] IN (1, 2, 3) OR [id] > 10)",
       mssql: "WHERE [name] = N'a project' AND ([id] IN (1, 2, 3) OR [id] > 10)"
     });
+
+    testsql({
+      name: 'here is a null char: \0'
+    }, {
+      default: "WHERE [name] = 'here is a null char: \0'",
+      postgres: "WHERE \"name\" = 'here is a null char: '"
+    });
   });
 
   suite('whereItemQuery', () => {
