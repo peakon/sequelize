@@ -1017,5 +1017,29 @@ describe(Support.getTestDialectTeaser('Model'), () => {
       });
     });
 
+    describe('with simple paranoid', function () {
+      it('should not find records where deletedAt set to future', function() {
+        const User = this.sequelize.define('paranoiduser', {
+          username: Sequelize.STRING
+        }, { paranoid: 'simple' });
+
+        return User.sync({ force: true }).then(() => {
+          return User.bulkCreate([
+            {username: 'Bob'},
+            {username: 'Tobi', deletedAt: moment().add(30, 'minutes').format()},
+            {username: 'Max', deletedAt: moment().add(30, 'days').format()},
+            {username: 'Tony', deletedAt: moment().subtract(30, 'days').format()}
+          ]);
+        }).then(() => {
+          return User.find({ where: {username: 'Tobi'} });
+        }).then(tobi => {
+          expect(tobi).to.be.null;
+        }).then(() => {
+          return User.findAll();
+        }).then(users => {
+          expect(users.length).to.be.eql(1);
+        });
+      });
+    });
   });
 });
