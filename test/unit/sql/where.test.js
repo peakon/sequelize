@@ -74,7 +74,8 @@ suite(Support.getTestDialectTeaser('SQL'), () => {
     }, {
       default: "WHERE [name] = 'here is a null char: \\0'",
       mssql: "WHERE [name] = N'here is a null char: \0'",
-      sqlite: "WHERE `name` = 'here is a null char: \0'"
+      sqlite: "WHERE `name` = 'here is a null char: \0'",
+      postgres: "WHERE \"name\" = 'here is a null char: '"
     });
   });
 
