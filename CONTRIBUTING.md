@@ -40,17 +40,19 @@ Here comes a little surprise: You need [Node.JS](http://nodejs.org).
 
 Just "cd" into sequelize directory and run `npm install`, see an example below:
 
-```console
+```sh
 $ cd path/to/sequelize
 $ npm install
 ```
 
-### 3. Database... Come to me! ###
+### 3. Database
+
+#### 3.a Local instances
 
 For MySQL and PostgreSQL you'll need to create a DB called `sequelize_test`.
 For MySQL this would look like this:
 
-```console
+```sh
 $ echo "CREATE DATABASE sequelize_test;" | mysql -uroot
 ```
 
@@ -58,98 +60,66 @@ $ echo "CREATE DATABASE sequelize_test;" | mysql -uroot
 
 For Postgres, creating the database and (optionally) adding the test user this would look like:
 
-```console
+```sh
 $ psql
+
 # create database sequelize_test;
 # create user postgres with superuser;
 ```
 
-**AND ONE LAST THING:** Once `npm install` worked for you (see below), you'll
-get SQLite tests for free :)
-
-#### 3a. Docker
+#### 3.b Docker
 
 Makes sure `docker` and `docker-compose` are installed.
 
-If running on Mac OSX, install [Docker for Mac](https://docs.docker.com/docker-for-mac/).
+If running on macOS, install [Docker for Mac](https://docs.docker.com/docker-for-mac/).
 
-Then simply run:
-
-```sh
-npm run test-docker
-```
-
-And once in a while you might want to run:
+Now launch the docker mysql and postgres servers with this command (you can add `-d` to run them in daemon mode):
 
 ```sh
-npm run build-docker
+$ docker-compose up postgres-95 mysql-57
 ```
 
-To rebuild the image (in case of changed dependencies or similar).
-
-If sequelize is unable to connect to mysql you might want to try running `sudo docker-compose up` in a second terminal window.
-
-### 4. Run the tests ###
+### 4. Running tests
 
 All tests are located in the `test` folder (which contains the
 lovely [Mocha](http://visionmedia.github.io/mocha/) tests).
 
-```console
+```sh
 $ npm run test-all || test-mysql || test-sqlite || test-mssql || test-postgres || test-postgres-native
 
 $ # alternatively you can pass database credentials with $variables when testing
 $ DIALECT=dialect SEQ_DB=database SEQ_USER=user SEQ_PW=password npm test
 ```
 
-#### 4a. Check the documentation
-This step only applies if you have actually changed something in the documentation. Please read [Documentation Contribution Guidelines](https://github.com/sequelize/sequelize/blob/master/CONTRIBUTING.DOCS.md) first.
-To generate documentation for the `sequelize.js` file, run (in the sequelize dir)
+For docker users you can use these commands instead
 
-```console
-$ npm run docs
+```sh
+$ DIALECT=mysql npm run test-docker # Or DIALECT=postgres for Postgres SQL
+
+# Only integration tests
+$ DIALECT=mysql npm run test-docker-integration
 ```
 
-The generated documentation will be placed in `docs/tmp.md`.
+### 5. Commit
 
-### 5. That's all ###
+Sequelize follows the [AngularJS Commit Message Conventions](https://docs.google.com/document/d/1QrDFcIiPjSLDn3EL15IJygNPiHORgU1_OOAqWjiDU5Y/edit#heading=h.em2hiij8p46d).
+Example:
 
-Just commit and send your pull request. Happy hacking and thank you for contributing.
+    feat(pencil): add 'graphiteWidth' option
 
-### Coding Guidelines ###
-Have a look at our [.jshintrc](https://github.com/sequelize/sequelize/blob/master/.jshintrc) file for the specifics. As part of the test process, all files will be linted, and your PR will **not** be accepted if it does not pass linting.
+Commit messages are used to automatically generate a changelog, so make sure to follow the convention.
+If you are unsure, you can let [commitizen](https://github.com/commitizen/cz-cli) ask you questions and commit for you (just run `node_modules/.bin/git-cz`).
+When you commit, your commit message will be validated automatically with [validate-commit-msg](https://github.com/kentcdodds/validate-commit-msg).
 
-#### Spaces ####
+Then push and send your pull request. Happy hacking and thank you for contributing.
 
-Use spaces when defining functions.
+# Coding guidelines
 
-```js
-function(arg1, arg2, arg3) {
-  return 1;
-}
-```
+Have a look at our [.eslintrc.json](https://github.com/sequelize/sequelize/blob/master/.eslintrc.json) file for the specifics. As part of the test process, all files will be linted, and your PR will **not** be accepted if it does not pass linting.
 
-Use spaces for if statements.
+# Publishing a release (For Maintainers)
 
-```js
-if (condition) {
-  // do something
-} else {
-  // something else
-}
-```
-
-#### Variable declarations ####
-
-```js
-var num  = 1
-  , user = new User()
-  , date = new Date();
-```
-
-#### Semicolons ####
-Yes
-
-# Publishing a release
+**Note:** _You really don't need this as Sequelize use semantic-release, Travis will automatically release new version_
 
 1. Ensure that latest build on master is green
 2. Ensure your local code is up to date (`git pull origin master`)

@@ -1,16 +1,43 @@
 'use strict';
 
-/* jshint -W110 */
-var chai = require('chai')
-  , expect = chai.expect
-  , Support = require(__dirname + '/../../support')
-  , dialect = Support.getTestDialect()
-  , _ = require('lodash')
-  , QueryGenerator = require('../../../../lib/dialects/mysql/query-generator');
+const chai = require('chai'),
+  expect = chai.expect,
+  Support = require(__dirname + '/../../support'),
+  dialect = Support.getTestDialect(),
+  _ = require('lodash'),
+  Operators = require('../../../../lib/operators'),
+  QueryGenerator = require('../../../../lib/dialects/mysql/query-generator');
 
 if (dialect === 'mysql') {
-  describe('[MYSQL Specific] QueryGenerator', function() {
-    var suites = {
+  describe('[MYSQL Specific] QueryGenerator', () => {
+    const suites = {
+      arithmeticQuery: [
+        {
+          title: 'Should use the plus operator',
+          arguments: ['+', 'myTable', { foo: 'bar' }, {}, {}],
+          expectation: 'UPDATE `myTable` SET `foo`=`foo`+ \'bar\' '
+        },
+        {
+          title: 'Should use the plus operator with where clause',
+          arguments: ['+', 'myTable', { foo: 'bar' }, { bar: 'biz'}, {}],
+          expectation: 'UPDATE `myTable` SET `foo`=`foo`+ \'bar\' WHERE `bar` = \'biz\''
+        },
+        {
+          title: 'Should use the minus operator',
+          arguments: ['-', 'myTable', { foo: 'bar' }, {}, {}],
+          expectation: 'UPDATE `myTable` SET `foo`=`foo`- \'bar\' '
+        },
+        {
+          title: 'Should use the minus operator with negative value',
+          arguments: ['-', 'myTable', { foo: -1 }, {}, {}],
+          expectation: 'UPDATE `myTable` SET `foo`=`foo`- -1 '
+        },
+        {
+          title: 'Should use the minus operator with where clause',
+          arguments: ['-', 'myTable', { foo: 'bar' }, { bar: 'biz'}, {}],
+          expectation: 'UPDATE `myTable` SET `foo`=`foo`- \'bar\' WHERE `bar` = \'biz\''
+        }
+      ],
       attributesToSQL: [
         {
           arguments: [{id: 'INTEGER'}],
@@ -48,7 +75,27 @@ if (dialect === 'mysql') {
           arguments: [{id: {type: 'INTEGER', after: 'Bar'}}],
           expectation: {id: 'INTEGER AFTER `Bar`'}
         },
-
+        // No Default Values allowed for certain types
+        {
+          title: 'No Default value for MySQL BLOB allowed',
+          arguments: [{id: {type: 'BLOB', defaultValue: []}}],
+          expectation: {id: 'BLOB'}
+        },
+        {
+          title: 'No Default value for MySQL TEXT allowed',
+          arguments: [{id: {type: 'TEXT', defaultValue: []}}],
+          expectation: {id: 'TEXT'}
+        },
+        {
+          title: 'No Default value for MySQL GEOMETRY allowed',
+          arguments: [{id: {type: 'GEOMETRY', defaultValue: []}}],
+          expectation: {id: 'GEOMETRY'}
+        },
+        {
+          title: 'No Default value for MySQL JSON allowed',
+          arguments: [{id: {type: 'JSON', defaultValue: []}}],
+          expectation: {id: 'JSON'}
+        },
         // New references style
         {
           arguments: [{id: {type: 'INTEGER', references: { model: 'Bar' }}}],
@@ -69,7 +116,7 @@ if (dialect === 'mysql') {
         {
           arguments: [{id: {type: 'INTEGER', allowNull: false, autoIncrement: true, defaultValue: 1, references: { model: 'Bar' }, onDelete: 'CASCADE', onUpdate: 'RESTRICT'}}],
           expectation: {id: 'INTEGER NOT NULL auto_increment DEFAULT 1 REFERENCES `Bar` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT'}
-        },
+        }
       ],
 
       createTableQuery: [
@@ -100,6 +147,10 @@ if (dialect === 'mysql') {
         {
           arguments: ['myTable', {title: 'ENUM("A", "B", "C")', name: 'VARCHAR(255)'}, {charset: 'latin1'}],
           expectation: 'CREATE TABLE IF NOT EXISTS `myTable` (`title` ENUM(\"A\", \"B\", \"C\"), `name` VARCHAR(255)) ENGINE=InnoDB DEFAULT CHARSET=latin1;'
+        },
+        {
+          arguments: ['myTable', {title: 'VARCHAR(255)', name: 'VARCHAR(255)'}, { rowFormat: 'default' }],
+          expectation: 'CREATE TABLE IF NOT EXISTS `myTable` (`title` VARCHAR(255), `name` VARCHAR(255)) ENGINE=InnoDB ROW_FORMAT=default;'
         },
         {
           arguments: ['myTable', {title: 'VARCHAR(255)', name: 'VARCHAR(255)', id: 'INTEGER PRIMARY KEY'}],
@@ -156,20 +207,20 @@ if (dialect === 'mysql') {
           expectation: 'SELECT count(*) AS `count` FROM `foo`;',
           context: QueryGenerator
         }, {
-          arguments: ['myTable', {where: ["foo='bar'"]}],
-          expectation: "SELECT * FROM `myTable` WHERE foo='bar';",
-          context: QueryGenerator
-        }, {
-          arguments: ['myTable', {order: 'id DESC'}],
-          expectation: 'SELECT * FROM `myTable` ORDER BY id DESC;',
-          context: QueryGenerator
-        }, {
           arguments: ['myTable', {order: ['id']}],
           expectation: 'SELECT * FROM `myTable` ORDER BY `id`;',
           context: QueryGenerator
         }, {
+          arguments: ['myTable', {order: ['id', 'DESC']}],
+          expectation: 'SELECT * FROM `myTable` ORDER BY `id`, `DESC`;',
+          context: QueryGenerator
+        }, {
           arguments: ['myTable', {order: ['myTable.id']}],
           expectation: 'SELECT * FROM `myTable` ORDER BY `myTable`.`id`;',
+          context: QueryGenerator
+        }, {
+          arguments: ['myTable', {order: [['myTable.id', 'DESC']]}],
+          expectation: 'SELECT * FROM `myTable` ORDER BY `myTable`.`id` DESC;',
           context: QueryGenerator
         }, {
           arguments: ['myTable', {order: [['id', 'DESC']]}, function(sequelize) {return sequelize.define('myTable', {});}],
@@ -177,10 +228,10 @@ if (dialect === 'mysql') {
           context: QueryGenerator,
           needsSequelize: true
         }, {
-          title: 'raw arguments are neither quoted nor escaped',
-          arguments: ['myTable', {order: [[{raw: 'f1(f2(id))'}, 'DESC']]}],
-          expectation: 'SELECT * FROM `myTable` ORDER BY f1(f2(id)) DESC;',
-          context: QueryGenerator
+          arguments: ['myTable', {order: [['id', 'DESC'], ['name']]}, function(sequelize) {return sequelize.define('myTable', {});}],
+          expectation: 'SELECT * FROM `myTable` AS `myTable` ORDER BY `myTable`.`id` DESC, `myTable`.`name`;',
+          context: QueryGenerator,
+          needsSequelize: true
         }, {
           title: 'functions can take functions as arguments',
           arguments: ['myTable', function(sequelize) {
@@ -231,9 +282,9 @@ if (dialect === 'mysql') {
           context: QueryGenerator,
           needsSequelize: true
         }, {
-          title: 'single string argument is not quoted',
+          title: 'single string argument should be quoted',
           arguments: ['myTable', {group: 'name'}],
-          expectation: 'SELECT * FROM `myTable` GROUP BY name;',
+          expectation: 'SELECT * FROM `myTable` GROUP BY `name`;',
           context: QueryGenerator
         }, {
           arguments: ['myTable', { group: ['name'] }],
@@ -260,21 +311,9 @@ if (dialect === 'mysql') {
           context: QueryGenerator,
           needsSequelize: true
         }, {
-          arguments: ['myTable', {group: 'name', order: 'id DESC'}],
-          expectation: 'SELECT * FROM `myTable` GROUP BY name ORDER BY id DESC;',
+          arguments: ['myTable', {group: 'name', order: [['id', 'DESC']]}],
+          expectation: 'SELECT * FROM `myTable` GROUP BY `name` ORDER BY `id` DESC;',
           context: QueryGenerator
-        }, {
-          title: 'HAVING clause works with string replacements',
-          arguments: ['myTable', function(sequelize) {
-            return {
-              attributes: ['*', [sequelize.fn('YEAR', sequelize.col('createdAt')), 'creationYear']],
-              group: ['creationYear', 'title'],
-              having: ['creationYear > ?', 2002]
-            };
-          }],
-          expectation: 'SELECT *, YEAR(`createdAt`) AS `creationYear` FROM `myTable` GROUP BY `creationYear`, `title` HAVING creationYear > 2002;',
-          context: QueryGenerator,
-          needsSequelize: true
         }, {
           title: 'HAVING clause works with where-like hash',
           arguments: ['myTable', function(sequelize) {
@@ -293,7 +332,7 @@ if (dialect === 'mysql') {
             return {
               where: sequelize.and(
                 { archived: null},
-                sequelize.where(sequelize.fn('COALESCE', sequelize.col('place_type_codename'), sequelize.col('announcement_type_codename')), { in : ['Lost', 'Found'] })
+                sequelize.where(sequelize.fn('COALESCE', sequelize.col('place_type_codename'), sequelize.col('announcement_type_codename')), { in: ['Lost', 'Found'] })
               )
             };
           }],
@@ -319,11 +358,11 @@ if (dialect === 'mysql') {
           expectation: 'SELECT * FROM `myTable` LIMIT 0;',
           context: QueryGenerator
         }, {
-         title: 'uses offset 0',
-         arguments: ['myTable', {offset: 0}],
-         expectation: 'SELECT * FROM `myTable` LIMIT 0, 10000000000000;',
-         context: QueryGenerator
-       }, {
+          title: 'uses offset 0',
+          arguments: ['myTable', {offset: 0}],
+          expectation: 'SELECT * FROM `myTable` LIMIT 0, 10000000000000;',
+          context: QueryGenerator
+        }, {
           title: 'multiple where arguments',
           arguments: ['myTable', {where: {boat: 'canoe', weather: 'cold'}}],
           expectation: "SELECT * FROM `myTable` WHERE `myTable`.`boat` = 'canoe' AND `myTable`.`weather` = 'cold';",
@@ -368,6 +407,38 @@ if (dialect === 'mysql') {
           arguments: ['myTable', {where: {field: {not: 3}}}],
           expectation: 'SELECT * FROM `myTable` WHERE `myTable`.`field` != 3;',
           context: QueryGenerator
+        }, {
+          title: 'Regular Expression in where clause',
+          arguments: ['myTable', {where: {field: {$regexp: '^[h|a|t]'}}}],
+          expectation: "SELECT * FROM `myTable` WHERE `myTable`.`field` REGEXP '^[h|a|t]';",
+          context: QueryGenerator
+        }, {
+          title: 'Regular Expression negation in where clause',
+          arguments: ['myTable', {where: {field: {$notRegexp: '^[h|a|t]'}}}],
+          expectation: "SELECT * FROM `myTable` WHERE `myTable`.`field` NOT REGEXP '^[h|a|t]';",
+          context: QueryGenerator
+        }, {
+          title: 'Empty having',
+          arguments: ['myTable', function() {
+            return {
+              having: {}
+            };
+          }],
+          expectation: 'SELECT * FROM `myTable`;',
+          context: QueryGenerator,
+          needsSequelize: true
+        }, {
+          title: 'Having in subquery',
+          arguments: ['myTable', function() {
+            return {
+              subQuery: true,
+              tableAs: 'test',
+              having: { creationYear: { [Operators.gt]: 2002 } }
+            };
+          }],
+          expectation: 'SELECT `test`.* FROM (SELECT * FROM `myTable` AS `test` HAVING `creationYear` > 2002) AS `test`;',
+          context: QueryGenerator,
+          needsSequelize: true
         }
       ],
 
@@ -526,23 +597,31 @@ if (dialect === 'mysql') {
           arguments: ['User', ['foo', 'bar']],
           expectation: 'DROP INDEX `user_foo_bar` ON `User`'
         }
+      ],
+      getForeignKeyQuery: [
+        {
+          arguments: ['User', 'email'],
+          expectation: "SELECT CONSTRAINT_NAME as constraint_name,CONSTRAINT_NAME as constraintName,CONSTRAINT_SCHEMA as constraintSchema,CONSTRAINT_SCHEMA as constraintCatalog,TABLE_NAME as tableName,TABLE_SCHEMA as tableSchema,TABLE_SCHEMA as tableCatalog,COLUMN_NAME as columnName,REFERENCED_TABLE_SCHEMA as referencedTableSchema,REFERENCED_TABLE_SCHEMA as referencedTableCatalog,REFERENCED_TABLE_NAME as referencedTableName,REFERENCED_COLUMN_NAME as referencedColumnName FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE WHERE (REFERENCED_TABLE_NAME = 'User' AND REFERENCED_COLUMN_NAME = 'email') OR (TABLE_NAME = 'User' AND COLUMN_NAME = 'email' AND REFERENCED_TABLE_NAME IS NOT NULL)"
+        }
       ]
     };
 
-    _.each(suites, function(tests, suiteTitle) {
-      describe(suiteTitle, function() {
-        tests.forEach(function(test) {
-          var title = test.title || 'MySQL correctly returns ' + test.expectation + ' for ' + JSON.stringify(test.arguments);
+    _.each(suites, (tests, suiteTitle) => {
+      describe(suiteTitle, () => {
+        tests.forEach(test => {
+          const title = test.title || 'MySQL correctly returns ' + test.expectation + ' for ' + JSON.stringify(test.arguments);
           it(title, function() {
             // Options would normally be set by the query interface that instantiates the query-generator, but here we specify it explicitly
-            var context = test.context || {options: {}};
+            const context = test.context || {options: {}};
             if (test.needsSequelize) {
               if (_.isFunction(test.arguments[1])) test.arguments[1] = test.arguments[1](this.sequelize);
               if (_.isFunction(test.arguments[2])) test.arguments[2] = test.arguments[2](this.sequelize);
             }
             QueryGenerator.options = _.assign(context.options, { timezone: '+00:00' });
             QueryGenerator._dialect = this.sequelize.dialect;
-            var conditions = QueryGenerator[suiteTitle].apply(QueryGenerator, test.arguments);
+            QueryGenerator.sequelize = this.sequelize;
+            QueryGenerator.setOperatorsAliases(Operators.LegacyAliases);
+            const conditions = QueryGenerator[suiteTitle].apply(QueryGenerator, test.arguments);
             expect(conditions).to.deep.equal(test.expectation);
           });
         });
